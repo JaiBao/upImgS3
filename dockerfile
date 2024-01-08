@@ -16,20 +16,21 @@ COPY . .
 # 構建應用程序
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o myapp .
 
-# 使用 scratch 作為最終運行時鏡像，它是一個空白的鏡像，非常小巧
-FROM scratch
+# 使用 alpine 作為最終運行時鏡像
+FROM alpine:latest  
 
-# 將工作目錄設置為 /root/ （這是 scratch 鏡像的根目錄）
+# 安裝 ca-certificates
+RUN apk --no-cache add ca-certificates
+
+# 將工作目錄設置為 /root/
 WORKDIR /root/
 
-# 從構建階段的 /app 目錄中複製構建好的二進制文件到當前目錄
+# 從構建階段的 /app 目錄中複製構建好的二進制文件和 .env 文件到當前目錄
 COPY --from=builder /app/myapp .
-
-# 從構建階段複製 .env 文件
 COPY --from=builder /app/.env .
 
 # 配置容器啟動時運行的命令
 ENTRYPOINT ["./myapp"]
 
-# 暴露端口（假設你的應用使用 8080 端口）
+# 暴露端口
 EXPOSE 8080

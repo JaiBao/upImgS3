@@ -27,7 +27,10 @@ func LoadRoutes(r *gin.Engine) {
 	r.POST("/upload-image", UploadImage)
     r.PUT("/replace-image/:image_id", ReplaceImage)
 	r.GET("/all-images", GetAllImages)
-
-
-
+	r.GET("/order/:order_id/products", GetOrderProducts) //主餐
+    r.GET("/order-product/:order_product_id/options", GetOrderProductOptions) //副餐
+	r.GET("/order/:order_id", GetCompleteOrderMeal) //全部
+    r.POST("/order", CreateNewOrder)  // 創建新訂單餐點
+	r.PUT("/order-update", UpdateOrderMeal)	  // 更新現有訂單餐點
 }
+	
