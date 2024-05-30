@@ -1,15 +1,15 @@
-//queries.go
+// queries.go
 package api
 
 import (
-    "fmt"
-    "time"
-    "database/sql"
-    "log"
-    _ "github.com/go-sql-driver/mysql"
+	"database/sql"
+	"errors"
+	"fmt"
+	"log"
+	"time"
+
+	_ "github.com/go-sql-driver/mysql"
 )
-
-
 
 // FetchRoadsByCityID 從數據庫中獲取特定城市 ID 的所有路名
 func FetchRoadsByCityID(cityID int) (Roads, error) {
@@ -260,8 +260,19 @@ return nil
 func FetchUserIDByNameAndMobile(name, mobile string) (string, error) {
     var userID string
 
-    // 修改 SQL 查詢來匹配名稱和手機號碼
-    err := db.QueryRow("SELECT id FROM users WHERE mobile = ? AND name = ?", mobile, name).Scan(&userID)
+    var err error
+    // 根據提供的參數動態選擇SQL查詢
+    if name != "" && mobile != "" {
+        // 同時有名字和手機號碼時的查詢
+        err = db.QueryRow("SELECT id FROM users WHERE mobile = ? AND name = ?", mobile, name).Scan(&userID)
+    } else if mobile != "" {
+        // 僅有手機號碼時的查詢
+        err = db.QueryRow("SELECT id FROM users WHERE mobile = ?", mobile).Scan(&userID)
+    } else {
+        // 如果既沒有手機號碼也沒有名字，直接返回錯誤
+        return "", errors.New("需要至少提供手機號碼或名字")
+    }
+
     if err != nil {
         if err == sql.ErrNoRows {
             // 如果沒有找到，返回空字符串
@@ -274,10 +285,34 @@ func FetchUserIDByNameAndMobile(name, mobile string) (string, error) {
 }
 
 
+//FetchDelivery 根據訂單編號查詢外送員
+func FetchDelivery(orderCode int) (*orderDelivery, error) {
+    var delivery orderDelivery
+
+    err := db.QueryRow("SELECT id, order_code, delivery_id, name, phone, cartype, fee FROM order_delivery WHERE order_code = ?", orderCode).Scan(
+        &delivery.ID,
+        &delivery.OrderCode,
+        &delivery.DeliveryID,
+        &delivery.Name,
+        &delivery.Phone,
+        &delivery.CarType,
+        &delivery.Fee,
+    )
+    if err != nil {
+        if err == sql.ErrNoRows {
+            return nil, nil
+        }
+        return nil, err
+    }
+
+    return &delivery, nil
+}
+
+
 
 // FetchOrderByCriteria 根據指定條件查詢訂單
 func FetchOrderByCriteria(criteria map[string]string) ([]Order, error) {
-    query := "SELECT code, personal_name, DATE_FORMAT(delivery_date, '%Y-%m-%d') as delivery_date, shipping_state_id, shipping_city_id, shipping_road, shipping_address1, status_code, delivery_time_range, mobile,shipping_status FROM orders WHERE "
+    query := "SELECT id AS orderID,code, personal_name, DATE_FORMAT(delivery_date, '%Y-%m-%d') as delivery_date, shipping_state_id, shipping_city_id, shipping_road, shipping_address1, status_code, delivery_time_range, mobile,shipping_status FROM orders WHERE "
     var args []interface{}
 
     for key, value := range criteria {
@@ -300,7 +335,7 @@ func FetchOrderByCriteria(criteria map[string]string) ([]Order, error) {
     for rows.Next() {
         var order Order
         // 可以根據Order結構調整scan
-        if err := rows.Scan(&order.Code, &order.PersonalName, &order.DeliveryDate, &order.ShippingStateID, &order.ShippingCityID, &order.ShippingRoad, &order.ShippingAddress1, &order.StatusCode, &order.DeliveryTimeRange, &order.Mobile,&order.ShippingStatus); err != nil {
+        if err := rows.Scan(&order.OrderID,&order.Code, &order.PersonalName, &order.DeliveryDate, &order.ShippingStateID, &order.ShippingCityID, &order.ShippingRoad, &order.ShippingAddress1, &order.StatusCode, &order.DeliveryTimeRange, &order.Mobile,&order.ShippingStatus); err != nil {
             log.Printf("Scan error: %v", err)  // 添加錯誤日誌
             return nil, err
         }
@@ -448,3 +483,61 @@ func FetchOrderProductOptions(orderProductID int) ([]OrderProductOption, error) 
     return options, nil
 }
 
+
+// UpdateOrderStatus 用訂單編號更改訂單狀態
+func UpdateOrderStatus(orderCode string) error {
+    stmt, err := db.Prepare("UPDATE orders SET status_code = 'Void' WHERE code = ?")
+    if err != nil {
+        log.Printf("Prepare update error: %v", err)
+        return err
+    }
+    defer stmt.Close()
+
+    _, err = stmt.Exec(orderCode)
+    if err != nil {
+        log.Printf("Execute update error: %v", err)
+        return err
+    }
+
+    log.Printf("Order status updated to 'Void' for order code: %s", orderCode)
+    return nil
+}
+
+
+
+
+// FetchTest2ByName 通过名称从 test2 表中检索条目。
+func FetchTest2ByName(typeStr, name string) (*Test2, error) {
+    var t Test2
+    err := db.QueryRow("SELECT type, name, mainMeal, slide, slide2, slide3, slide4, slide5, drink ,mainMeal2 FROM test2 WHERE type = ? AND name = ?", typeStr, name).Scan(&t.Type, &t.Name, &t.MainMeal, &t.Slide, &t.Slide2, &t.Slide3, &t.Slide4, &t.Slide5, &t.Drink , &t.MainMeal2)
+    if err != nil {
+        if err == sql.ErrNoRows {
+            return nil, nil
+        }
+        log.Println("FetchTest2ByName error:", err)
+        return nil, err
+    }
+    return &t, nil
+}
+
+// UpdateTest2ByName 根据名称更新 test2 表中的条目。
+func UpdateTest2ByNameInDB(t *Test2) error {
+    result, err := db.Exec("UPDATE test2 SET type = ?, mainMeal = ?, slide = ?, slide2 = ?, slide3 = ?, slide4 = ?, slide5 = ?, drink = ?, mainMeal2 = ? WHERE type = ? AND name = ?", t.Type, t.MainMeal, t.Slide, t.Slide2, t.Slide3, t.Slide4, t.Slide5, t.Drink, t.MainMeal2, t.Type, t.Name)
+
+    if err != nil {
+        log.Println("UpdateTest2ByName error:", err)
+        return err
+    }
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        return err
+    }
+    if rowsAffected == 0 {
+        // 沒有的話插入
+        _, err := db.Exec("INSERT INTO test2 (type, name, mainMeal, slide, slide2, slide3, slide4, slide5, drink, mainMeal2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", t.Type, t.Name, t.MainMeal, t.Slide, t.Slide2, t.Slide3, t.Slide4, t.Slide5, t.Drink, t.MainMeal2)
+        if err != nil {
+            return err
+        }
+    }
+    return nil
+}

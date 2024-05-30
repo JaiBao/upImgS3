@@ -3,7 +3,6 @@
 package api
 
 import (
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -32,5 +31,13 @@ func LoadRoutes(r *gin.Engine) {
 	r.GET("/order/:order_id", GetCompleteOrderMeal) //全部
     r.POST("/order", CreateNewOrder)  // 創建新訂單餐點
 	r.PUT("/order-update", UpdateOrderMeal)	  // 更新現有訂單餐點
+	r.GET("/delivery/:order_code", GetDeliveryByOrderCode)
+
+	r.PUT("/order/:code/void", UpdateOrderStatusHandler)
+	r.GET("/test2/:type/:name", GetTest2ByName)
+r.PUT("/test2/update", UpdateTest2ByName)
+r.POST("/order/creat", ForwardOrderToHTTPService)
+
+	
 }
 	

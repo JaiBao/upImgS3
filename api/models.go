@@ -1,8 +1,7 @@
-//models.go
+// models.go
 package api
 
 import "time"
-
 
 // TimeSlotLimit  表示時段限制的結構
 type TimeSlotLimit struct {
@@ -32,6 +31,7 @@ type Roads []Road
 
 // Order 表示訂單的結構
 type Order struct {
+    OrderID           int    `json:"orderID"`
 	ID                int    `json:"id"`
     Code              string `json:"code"`
     PersonalName      string `json:"personal_name"`
@@ -46,6 +46,16 @@ type Order struct {
     Mobile            string `json:"mobile"`
     ShippingStatus   int  `json:"shipping_status"`
 
+}
+// 外送員
+type orderDelivery struct{
+    ID                int    `json:"id"`
+    OrderCode       int    `json:"order_code"`
+    DeliveryID       int    `json:"delivery_id"`
+    Name       string    `json:"name"`
+    Phone       string    `json:"phone"`
+    CarType       string    `json:"cartype"`
+    Fee       int    `json:"fee"`
 }
 
 
@@ -102,6 +112,32 @@ type OrderMeal struct {
     MainMeal  OrderProduct        `json:"main_meal"`
     SideMeals []OrderProductOption `json:"side_meals"`
 }
+
+// OrderData 用於接收從前端傳來的訂單數據
+type OrderData struct {
+    Amount    int      `json:"amount"`    // 訂單金額
+    TradeDesc string   `json:"tradeDesc"` // 交易描述
+    ItemNames []string `json:"itemNames"` // 商品名稱列表
+    // 根據需要添加其他字段，如客戶信息等
+}
+
+//測試
+type Test2 struct {
+    ID       int    `json:"id"`
+    Type     string `json:"type"`
+    Name     string `json:"name"`
+    MainMeal string `json:"mainMeal"`
+    Slide     string `json:"slide"`
+    Slide2    string `json:"slide2"`
+    Slide3    string `json:"slide3"`
+    Slide4    string `json:"slide4"`
+    Slide5    string `json:"slide5"`
+    Drink    string `json:"drink"`
+    MainMeal2 string `json:"mainMeal2"`
+}
+
+
+
 
 
 

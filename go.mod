@@ -3,6 +3,7 @@ module onlineBingGin
 go 1.16
 
 require (
+	github.com/Laysi/go-ecpay-sdk v0.0.31 // indirect
 	github.com/aws/aws-sdk-go v1.48.15 // indirect
 	github.com/bytedance/sonic v1.10.2 // indirect
 	github.com/chenzhuoyu/iasm v0.9.1 // indirect

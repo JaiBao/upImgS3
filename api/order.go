@@ -1,13 +1,17 @@
-//order.go
+// order.go
 package api
 
 import (
-    "log"
-    "strconv"
-    "net/http"
-    "github.com/gin-gonic/gin"
-)
+	"bytes"
+	"database/sql"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"strconv"
 
+	"github.com/gin-gonic/gin"
+)
 
 // GetOrderByCriteria 根據條件查詢訂單
 func GetOrderByCriteria(c *gin.Context)  {
@@ -44,6 +48,36 @@ func GetOrderByCriteria(c *gin.Context)  {
 
      c.JSON(http.StatusOK, orders)
 }
+// UpdateOrderStatusHandler 更改訂單狀態
+func UpdateOrderStatusHandler(c *gin.Context) {
+    orderCode := c.Param("code")
+    
+    // 訂單是否存在
+    var orderId int
+    err := db.QueryRow("SELECT id FROM orders WHERE code = ?", orderCode).Scan(&orderId)
+    if err != nil {
+        if err == sql.ErrNoRows {
+            // 不存在
+            c.JSON(http.StatusNotFound, gin.H{"error": "沒有該筆訂單"})
+        } else {
+            // 資料庫錯誤
+            log.Printf("Query error: %v", err)
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "查詢訂單時發生錯誤"})
+        }
+        return
+    }
+
+    // 存在订单，更新其状态
+    err = UpdateOrderStatus(orderCode)
+    if err != nil {
+        log.Printf("Update error: %v", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "無法更新訂單狀態"})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"message": "訂單狀態已更新為作廢"})
+}
+
 
 // GetOrderProducts 根據訂單 ID 獲取訂單餐點
 func GetOrderProducts(c *gin.Context) {
@@ -212,6 +246,62 @@ func UpdateOrderMeal(c *gin.Context) {
     }
 
     c.JSON(http.StatusOK, gin.H{"message": "訂單餐點更新成功"})
+}
+
+
+// ForwardOrderToHTTPService 轉發
+func ForwardOrderToHTTPService(c *gin.Context) {
+    // os導入環境變數
+    baseURL := os.Getenv("POS_API_URL")
+    if baseURL == "" {
+        log.Println("Environment variable BASE_API_URL not set")
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "伺服器錯誤"})
+        return
+    }
+
+    // 路徑
+    specificPath := "/sale/order/save"
+    fullURL := baseURL + specificPath
+    // 要
+    body, err := io.ReadAll(c.Request.Body)
+    if err != nil {
+        log.Printf("Error reading body: %v", err)
+        c.JSON(http.StatusBadRequest, gin.H{"error": "無法讀取"})
+        return
+    }
+
+    // 轉發
+    req, err := http.NewRequest("POST", fullURL, bytes.NewBuffer(body))
+    if err != nil {
+        log.Printf("Error creating request: %v", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "請求失敗"})
+        return
+    }
+
+
+    // 複製
+    req.Header.Set("Content-Type", c.GetHeader("Content-Type"))
+
+    // 轉發請其
+    client := &http.Client{}
+    resp, err := client.Do(req)
+    if err != nil {
+        log.Printf("Error sending request: %v", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "轉發失敗"})
+        return
+    }
+    defer resp.Body.Close()
+
+    // 回應
+    response, err := io.ReadAll(resp.Body)
+    if err != nil {
+        log.Printf("Error reading response body: %v", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "回應失敗"})
+        return
+    }
+
+    // 回傳
+    c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), response)
 }
 
 

@@ -1,12 +1,12 @@
-//auto.go
+// auto.go
 package api
 
 import (
-    "time"
-    "net/http"
-    "github.com/gin-gonic/gin"
-)
+	"net/http"
+	"time"
 
+	"github.com/gin-gonic/gin"
+)
 
 // TriggerAutoCreateLimits 自動創建預設日期
 func TriggerAutoCreateLimits(c *gin.Context)  {
@@ -59,16 +59,33 @@ func StopSchedulerHandler(c *gin.Context)  {
 }
 
 func StartScheduler() {
-    ticker = time.NewTicker(24 * time.Hour)
-    go func() {
-        for {
-            select {
-            case <-ticker.C:
-                AutoCreateNextTwoMonthsLimits("twoWeeks",false)
+    // 計算現在時間到今天早上6點的時間差
+    now := time.Now()
+    next := time.Date(now.Year(), now.Month(), now.Day(), 6, 0, 0, 0, now.Location())
+    if now.After(next) {
+        // 如果現在時間已經過了今天的6點，那麼設定下一個觸發時間為明天6點
+        next = next.Add(24 * time.Hour)
+    }
+
+    // 計算時間差
+    duration := next.Sub(now)
+
+    // 設置一個一次性的定時器，在今天或明天的早上6點觸發
+    time.AfterFunc(duration, func() {
+        AutoCreateNextTwoMonthsLimits("oneMonth", false)
+        // 現在設置每24小時觸發一次的定時器
+        ticker = time.NewTicker(24 * time.Hour)
+        go func() {
+            for {
+                select {
+                case <-ticker.C:
+                    AutoCreateNextTwoMonthsLimits("oneMonth", false)
+                }
             }
-        }
-    }()
+        }()
+    })
 }
+
 
 func StopScheduler() {
     if ticker != nil {

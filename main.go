@@ -1,17 +1,19 @@
-//main.go
+// main.go
 package main
 
 import (
-	"onlineBingGin/api"
 	"fmt"
-	"github.com/gin-gonic/gin"
+	"onlineBingGin/api"
+
 	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
 	"log"
 	"os"
 	// "net/http"
 )
+
 // func IPAuthMiddleware(allowedIPs []string) gin.HandlerFunc {
 //     return func(c *gin.Context) {
 //         clientIP := c.ClientIP()
@@ -80,8 +82,9 @@ func main() {
 
 
 
-	// 加載 API 路由
+	// // 加載 API 路由
 	api.LoadRoutes(r)
+
 
 	// 啟動服務
 	r.Run(":8080")
